@@ -23,8 +23,6 @@ st.markdown(
     :root {
         --ink: #0f1a14;
         --mint: #1fa97a;
-        --mint-dim: #147a58;
-        --warn: #c45c26;
         --panel: rgba(15, 26, 20, 0.04);
         --line: rgba(15, 26, 20, 0.12);
     }
@@ -148,7 +146,7 @@ scalp_settings = ScalpSettings(
 )
 
 with tab_scalp:
-    col_refresh, col_status = st.columns([1, 3])
+    col_refresh, _ = st.columns([1, 3])
     with col_refresh:
         refresh = st.button("Refresh scan", type="primary", use_container_width=True)
 
@@ -176,7 +174,6 @@ with tab_scalp:
 
     if "scalp_entries" in st.session_state:
         entries = st.session_state["scalp_entries"]
-        settings = st.session_state["scalp_settings"]
 
         if not entries:
             st.warning("No scalp setups matched. Lower Min ATR % or turn off actionable-only.")
@@ -234,24 +231,18 @@ with tab_scalp:
             )
 
             st.subheader("Ranked scalp entries")
-            st.dataframe(
-                display.style.format(
-                    {
-                        "Entry ($)": "${:.2f}",
-                        "Target ($)": "${:.2f}",
-                        "Stop ($)": "${:.2f}",
-                        "Target %": "{:.1f}%",
-                        "Stop %": "{:.1f}%",
-                        "R:R": "{:.2f}",
-                        "ATR %": "{:.2f}%",
-                        "Vol ×": "{:.2f}",
-                        "RSI": "{:.1f}",
-                        "Score": "{:.2f}",
-                    }
-                ),
-                use_container_width=True,
-                hide_index=True,
-            )
+            formatted = display.copy()
+            formatted["Entry ($)"] = formatted["Entry ($)"].map(lambda x: f"${x:.2f}")
+            formatted["Target ($)"] = formatted["Target ($)"].map(lambda x: f"${x:.2f}")
+            formatted["Stop ($)"] = formatted["Stop ($)"].map(lambda x: f"${x:.2f}")
+            formatted["Target %"] = formatted["Target %"].map(lambda x: f"{x:.1f}%")
+            formatted["Stop %"] = formatted["Stop %"].map(lambda x: f"{x:.1f}%")
+            formatted["R:R"] = formatted["R:R"].map(lambda x: f"{x:.2f}")
+            formatted["ATR %"] = formatted["ATR %"].map(lambda x: f"{x:.2f}%")
+            formatted["Vol ×"] = formatted["Vol ×"].map(lambda x: f"{x:.2f}")
+            formatted["RSI"] = formatted["RSI"].map(lambda x: f"{x:.1f}")
+            formatted["Score"] = formatted["Score"].map(lambda x: f"{x:.2f}")
+            st.dataframe(formatted, use_container_width=True, hide_index=True)
 
             st.subheader("Trade card")
             selected = st.selectbox("Inspect entry", [e.ticker for e in entries])
@@ -259,8 +250,13 @@ with tab_scalp:
 
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("Entry", f"${pick.entry:.2f}")
-            c2.metric("Target (+{:.0f}%)".format(pick.reward_pct), f"${pick.target:.2f}")
-            c3.metric("Stop (−{:.0f}%)".format(pick.risk_pct) if pick.bias == "Long" else f"Stop (+{pick.risk_pct:.0f}%)", f"${pick.stop:.2f}")
+            c2.metric(f"Target (+{pick.reward_pct:.0f}%)", f"${pick.target:.2f}")
+            stop_label = (
+                f"Stop (−{pick.risk_pct:.0f}%)"
+                if pick.bias == "Long"
+                else f"Stop (+{pick.risk_pct:.0f}%)"
+            )
+            c3.metric(stop_label, f"${pick.stop:.2f}")
             c4.metric("R:R", f"{pick.risk_reward:.2f}x")
             c5.metric("ATR", f"{pick.atr_pct:.2f}%")
 
