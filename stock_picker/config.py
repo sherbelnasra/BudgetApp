@@ -11,7 +11,7 @@ DEFAULT_TICKERS: list[str] = [
     "TXN", "PM", "INTC", "AMD", "QCOM", "UNP", "HON", "IBM", "AMGN", "CAT",
     "GE", "BA", "GS", "MS", "BLK", "SPGI", "AXP", "RTX", "LOW", "SBUX",
     "DE", "ISRG", "GILD", "BKNG", "MDLZ", "ADI", "TJX", "VRTX", "REGN", "LMT",
-    "SYK", "MMC", "CB", "CI", "SO", "DUK", "PLD", "EQIX", "SCHW", "CME",
+    "SYK", "CB", "CI", "SO", "DUK", "PLD", "EQIX", "SCHW", "CME",
     "MO", "ZTS", "CL", "EOG", "SLB", "USB", "PNC", "TGT", "GM", "F",
     "PYPL", "SHOP", "SNOW", "UBER", "ABNB", "COIN", "PANW", "CRWD", "NET", "ARM",
 ]
