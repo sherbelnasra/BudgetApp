@@ -1,112 +1,295 @@
-"""Streamlit app for daily stock picks using the 150-day moving average."""
+"""Streamlit dashboard for stock scalping entries with a 5% profit target."""
+
+from __future__ import annotations
 
 import streamlit as st
 import yfinance as yf
 
-from stock_picker.config import DEFAULT_TICKERS, ScreenerSettings
+from stock_picker.config import DEFAULT_TICKERS, ScalpSettings, ScreenerSettings
+from stock_picker.scalper import entries_to_dataframe, screen_scalps
 from stock_picker.screener import picks_to_dataframe, screen_stocks
 
 st.set_page_config(
-    page_title="Daily Stock Picker",
-    page_icon="📈",
+    page_title="Scalp Desk — 5% Targets",
+    page_icon="⚡",
     layout="wide",
 )
 
-st.title("Daily Stock Picker")
-st.caption("Screens stocks daily using the **150-day moving average**")
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap');
+
+    :root {
+        --ink: #0f1a14;
+        --mint: #1fa97a;
+        --mint-dim: #147a58;
+        --warn: #c45c26;
+        --panel: rgba(15, 26, 20, 0.04);
+        --line: rgba(15, 26, 20, 0.12);
+    }
+
+    .stApp {
+        background:
+            radial-gradient(1200px 600px at 10% -10%, #d8f3e7 0%, transparent 55%),
+            radial-gradient(900px 500px at 100% 0%, #f3e6d8 0%, transparent 50%),
+            linear-gradient(180deg, #f7faf8 0%, #eef3f0 100%);
+        color: var(--ink);
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    h1, h2, h3 { font-family: 'DM Sans', sans-serif !important; letter-spacing: -0.02em; }
+
+    .hero-brand {
+        font-size: clamp(2.4rem, 5vw, 3.6rem);
+        font-weight: 700;
+        line-height: 1.05;
+        margin: 0 0 0.35rem 0;
+        color: var(--ink);
+    }
+    .hero-sub {
+        font-size: 1.05rem;
+        color: rgba(15, 26, 20, 0.72);
+        max-width: 38rem;
+        margin-bottom: 1.25rem;
+    }
+    .pill {
+        display: inline-block;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem;
+        padding: 0.35rem 0.65rem;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        margin-right: 0.4rem;
+        margin-bottom: 0.75rem;
+    }
+    .metric-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.75rem;
+        margin: 1rem 0 1.5rem 0;
+    }
+    .metric-cell {
+        border-top: 2px solid var(--mint);
+        padding: 0.75rem 0.1rem;
+    }
+    .metric-cell span {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: rgba(15, 26, 20, 0.55);
+    }
+    .metric-cell strong {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.35rem;
+        color: var(--ink);
+    }
+    .disclaimer {
+        font-size: 0.8rem;
+        color: rgba(15, 26, 20, 0.55);
+        border-top: 1px solid var(--line);
+        padding-top: 0.75rem;
+        margin-top: 1.5rem;
+    }
+    @media (max-width: 768px) {
+        .metric-strip { grid-template-columns: 1fr 1fr; }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown('<div class="pill">SCALP DESK</div>', unsafe_allow_html=True)
+st.markdown('<p class="hero-brand">Scalp Desk</p>', unsafe_allow_html=True)
+st.markdown(
+    '<p class="hero-sub">Live entries for liquid stocks with enough volatility '
+    "to chase a <strong>5% profit target</strong> — entry, stop, and R:R in one pass.</p>",
+    unsafe_allow_html=True,
+)
+
+tab_scalp, tab_ma = st.tabs(["5% Scalp Entries", "150 MA Picks"])
 
 with st.sidebar:
-    st.header("Screening rules")
-    top_n = st.slider("Number of picks", min_value=3, max_value=25, value=10)
-    require_above_ma = st.checkbox("Price must be above 150 MA", value=True)
-    require_rising_ma = st.checkbox("150 MA must be rising", value=True)
-    max_pct_above = st.slider("Max % above 150 MA", min_value=5, max_value=30, value=15)
+    st.header("Scalp filters")
+    top_n = st.slider("Max entries", min_value=5, max_value=30, value=15)
+    target_pct = st.slider("Profit target %", min_value=3.0, max_value=8.0, value=5.0, step=0.5)
+    stop_pct = st.slider("Stop loss %", min_value=1.0, max_value=4.0, value=2.0, step=0.5)
+    min_atr = st.slider("Min ATR % (volatility)", min_value=1.5, max_value=6.0, value=2.5, step=0.25)
     min_volume = st.number_input(
         "Min avg daily volume",
-        min_value=100_000,
+        min_value=250_000,
         max_value=10_000_000,
-        value=500_000,
-        step=100_000,
+        value=1_000_000,
+        step=250_000,
     )
+    long_only = st.checkbox("Long setups only", value=True)
+    actionable_only = st.checkbox("Hide watchlist / weak setups", value=True)
 
     st.divider()
     st.markdown(
         """
-        **How it works**
-        1. Fetches recent price history for each stock
-        2. Calculates the 150-day moving average
-        3. Keeps stocks trading **above** a rising 150 MA
-        4. Ranks by strength without being overextended
+        **Entry logic**
+        1. Filter for ATR large enough that **5%** is reachable
+        2. Require liquid average volume
+        3. Classify setup (breakout, pullback, continuation…)
+        4. Set **entry / target / stop** and rank by score
         """
     )
 
-settings = ScreenerSettings(
+scalp_settings = ScalpSettings(
     top_n=top_n,
-    require_price_above_ma=require_above_ma,
-    require_rising_ma=require_rising_ma,
-    max_pct_above_ma=float(max_pct_above),
+    target_pct=float(target_pct),
+    stop_pct=float(stop_pct),
+    min_atr_pct=float(min_atr),
     min_avg_volume=int(min_volume),
+    long_only=long_only,
+    require_actionable=actionable_only,
 )
 
-if st.button("Run today's screen", type="primary", use_container_width=True):
-    with st.spinner("Screening stocks against the 150-day moving average..."):
-        picks = screen_stocks(settings)
-        st.session_state["picks"] = picks
-        st.session_state["settings"] = settings
+with tab_scalp:
+    run = st.button("Scan scalp entries", type="primary", use_container_width=True)
 
-if "picks" in st.session_state:
-    picks = st.session_state["picks"]
-    settings = st.session_state["settings"]
+    if run:
+        with st.spinner("Screening for volatile 5% scalp setups..."):
+            entries = screen_scalps(scalp_settings)
+            st.session_state["scalp_entries"] = entries
+            st.session_state["scalp_settings"] = scalp_settings
 
-    if not picks:
-        st.warning("No stocks matched your criteria today. Try relaxing the filters.")
-    else:
-        df = picks_to_dataframe(picks)
-        df_display = df.rename(
-            columns={
-                "ticker": "Ticker",
-                "price": "Price ($)",
-                "ma_150": "150 MA ($)",
-                "pct_above_ma": "% Above MA",
-                "ma_slope_pct": "MA Slope (%)",
-                "avg_volume": "Avg Volume",
-                "signal": "Signal",
-                "score": "Score",
-            }
-        )
+    if "scalp_entries" in st.session_state:
+        entries = st.session_state["scalp_entries"]
+        settings = st.session_state["scalp_settings"]
 
-        st.subheader(f"Today's top {len(picks)} picks")
-        st.dataframe(
-            df_display.style.format(
-                {
-                    "Price ($)": "${:.2f}",
-                    "150 MA ($)": "${:.2f}",
-                    "% Above MA": "{:.2f}%",
-                    "MA Slope (%)": "{:.2f}%",
-                    "Avg Volume": "{:,.0f}",
-                    "Score": "{:.2f}",
+        if not entries:
+            st.warning("No scalp setups matched. Lower Min ATR % or turn off actionable-only.")
+        else:
+            longs = sum(1 for e in entries if e.bias == "Long")
+            shorts = sum(1 for e in entries if e.bias == "Short")
+            avg_rr = sum(e.risk_reward for e in entries) / len(entries)
+            top = entries[0]
+
+            st.markdown(
+                f"""
+                <div class="metric-strip">
+                  <div class="metric-cell"><span>Entries</span><strong>{len(entries)}</strong></div>
+                  <div class="metric-cell"><span>Long / Short</span><strong>{longs} / {shorts}</strong></div>
+                  <div class="metric-cell"><span>Avg R:R</span><strong>{avg_rr:.1f}x</strong></div>
+                  <div class="metric-cell"><span>Top ticker</span><strong>{top.ticker}</strong></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            df = entries_to_dataframe(entries)
+            display = df[
+                [
+                    "ticker",
+                    "bias",
+                    "setup",
+                    "entry",
+                    "target",
+                    "stop",
+                    "reward_pct",
+                    "risk_pct",
+                    "risk_reward",
+                    "atr_pct",
+                    "volume_ratio",
+                    "rsi",
+                    "score",
+                ]
+            ].rename(
+                columns={
+                    "ticker": "Ticker",
+                    "bias": "Bias",
+                    "setup": "Setup",
+                    "entry": "Entry ($)",
+                    "target": "Target ($)",
+                    "stop": "Stop ($)",
+                    "reward_pct": "Target %",
+                    "risk_pct": "Stop %",
+                    "risk_reward": "R:R",
+                    "atr_pct": "ATR %",
+                    "volume_ratio": "Vol ×",
+                    "rsi": "RSI",
+                    "score": "Score",
                 }
-            ),
-            use_container_width=True,
-            hide_index=True,
-        )
+            )
 
-        st.subheader("Price vs 150-day moving average")
-        selected = st.selectbox("Inspect a pick", [p.ticker for p in picks])
+            st.subheader("Ranked scalp entries")
+            st.dataframe(
+                display.style.format(
+                    {
+                        "Entry ($)": "${:.2f}",
+                        "Target ($)": "${:.2f}",
+                        "Stop ($)": "${:.2f}",
+                        "Target %": "{:.1f}%",
+                        "Stop %": "{:.1f}%",
+                        "R:R": "{:.2f}",
+                        "ATR %": "{:.2f}%",
+                        "Vol ×": "{:.2f}",
+                        "RSI": "{:.1f}",
+                        "Score": "{:.2f}",
+                    }
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
 
-        if selected:
-            history = yf.Ticker(selected).history(period="1y", auto_adjust=True)
+            st.subheader("Trade card")
+            selected = st.selectbox("Inspect entry", [e.ticker for e in entries])
+            pick = next(e for e in entries if e.ticker == selected)
+
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("Entry", f"${pick.entry:.2f}")
+            c2.metric("Target (+{:.0f}%)".format(pick.reward_pct), f"${pick.target:.2f}")
+            c3.metric("Stop (−{:.0f}%)".format(pick.risk_pct) if pick.bias == "Long" else f"Stop (+{pick.risk_pct:.0f}%)", f"${pick.stop:.2f}")
+            c4.metric("R:R", f"{pick.risk_reward:.2f}x")
+            c5.metric("ATR", f"{pick.atr_pct:.2f}%")
+
+            st.info(f"**{pick.setup}** · {pick.bias} — {pick.notes}")
+
+            history = yf.Ticker(selected).history(period="3mo", auto_adjust=True)
             if not history.empty:
-                history["MA150"] = history["Close"].rolling(window=150).mean()
-                chart_df = history[["Close", "MA150"]].dropna()
-                st.line_chart(chart_df, use_container_width=True)
+                close = history["Close"]
+                chart = history[["Close"]].copy()
+                chart["EMA9"] = close.ewm(span=9, adjust=False).mean()
+                chart["EMA21"] = close.ewm(span=21, adjust=False).mean()
+                chart["Target"] = pick.target
+                chart["Stop"] = pick.stop
+                st.line_chart(chart.dropna(), use_container_width=True)
+    else:
+        st.info("Click **Scan scalp entries** to generate today's 5% profit setups.")
+        st.markdown(f"Universe: **{len(DEFAULT_TICKERS)}** liquid names")
 
-                pick = next(p for p in picks if p.ticker == selected)
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("Price", f"${pick.price:.2f}")
-                c2.metric("150 MA", f"${pick.ma_150:.2f}")
-                c3.metric("% Above MA", f"{pick.pct_above_ma:.2f}%")
-                c4.metric("MA slope (20d)", f"{pick.ma_slope_pct:.2f}%")
-else:
-    st.info("Click **Run today's screen** to generate daily investment picks.")
-    st.markdown(f"Universe: **{len(DEFAULT_TICKERS)}** large-cap stocks")
+with tab_ma:
+    st.caption("Legacy daily picker — stocks above a rising 150-day moving average.")
+    ma_top = st.slider("MA picks", min_value=3, max_value=20, value=10, key="ma_top")
+    if st.button("Run 150 MA screen", use_container_width=True):
+        with st.spinner("Screening against the 150-day MA..."):
+            picks = screen_stocks(ScreenerSettings(top_n=ma_top))
+            st.session_state["ma_picks"] = picks
+
+    if "ma_picks" in st.session_state:
+        picks = st.session_state["ma_picks"]
+        if not picks:
+            st.warning("No MA picks today.")
+        else:
+            df = picks_to_dataframe(picks).rename(
+                columns={
+                    "ticker": "Ticker",
+                    "price": "Price ($)",
+                    "ma_150": "150 MA ($)",
+                    "pct_above_ma": "% Above MA",
+                    "ma_slope_pct": "MA Slope (%)",
+                    "avg_volume": "Avg Volume",
+                    "signal": "Signal",
+                    "score": "Score",
+                }
+            )
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+st.markdown(
+    '<p class="disclaimer">Educational screening only — not financial advice. '
+    "5% stock moves are aggressive; size risk carefully and confirm with live order flow.</p>",
+    unsafe_allow_html=True,
+)
