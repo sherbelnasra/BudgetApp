@@ -1,0 +1,2 @@
+[console_scripts]
+stock-picker = stock_picker.cli:main

@@ -71,6 +71,53 @@ def _fetch_history(ticker: str, period: str = "3mo") -> pd.DataFrame | None:
         return None
 
 
+def _fetch_universe(tickers: list[str], period: str = "3mo") -> dict[str, pd.DataFrame]:
+    """Batch-download OHLCV for the universe; fall back per-ticker on failure."""
+    histories: dict[str, pd.DataFrame] = {}
+    if not tickers:
+        return histories
+
+    try:
+        raw = yf.download(
+            tickers=tickers,
+            period=period,
+            group_by="ticker",
+            auto_adjust=True,
+            threads=True,
+            progress=False,
+        )
+    except Exception:
+        raw = None
+
+    if raw is not None and not raw.empty:
+        if len(tickers) == 1:
+            ticker = tickers[0]
+            frame = raw.copy()
+            if len(frame) >= 25 and {"Open", "High", "Low", "Close", "Volume"}.issubset(frame.columns):
+                histories[ticker] = frame
+            return histories
+
+        for ticker in tickers:
+            try:
+                if ticker not in raw.columns.get_level_values(0):
+                    continue
+                frame = raw[ticker].dropna(how="all")
+                if len(frame) < 25:
+                    continue
+                if not {"Open", "High", "Low", "Close", "Volume"}.issubset(frame.columns):
+                    continue
+                histories[ticker] = frame
+            except Exception:
+                continue
+
+    missing = [t for t in tickers if t not in histories]
+    for ticker in missing:
+        frame = _fetch_history(ticker, period=period)
+        if frame is not None:
+            histories[ticker] = frame
+    return histories
+
+
 def _classify_setup(
     *,
     price: float,
@@ -132,9 +179,8 @@ def _classify_setup(
     )
 
 
-def _analyze_ticker(ticker: str, settings: ScalpSettings) -> ScalpEntry | None:
-    history = _fetch_history(ticker)
-    if history is None:
+def _analyze_frame(ticker: str, history: pd.DataFrame, settings: ScalpSettings) -> ScalpEntry | None:
+    if history is None or len(history) < 25:
         return None
 
     close = history["Close"]
@@ -143,11 +189,13 @@ def _analyze_ticker(ticker: str, settings: ScalpSettings) -> ScalpEntry | None:
     volume = history["Volume"]
 
     price = float(close.iloc[-1])
-    if price <= 0:
+    if price <= 0 or pd.isna(price):
         return None
 
     tr = _true_range(high, low, close)
     atr = float(tr.tail(settings.atr_period).mean())
+    if pd.isna(atr) or atr <= 0:
+        return None
     atr_pct = (atr / price) * 100
 
     # Need enough daily volatility that a 5% move is realistic (~1.2–2× ATR).
@@ -155,7 +203,7 @@ def _analyze_ticker(ticker: str, settings: ScalpSettings) -> ScalpEntry | None:
         return None
 
     avg_vol = float(volume.tail(20).mean())
-    if avg_vol < settings.min_avg_volume:
+    if pd.isna(avg_vol) or avg_vol < settings.min_avg_volume:
         return None
 
     today_vol = float(volume.iloc[-1])
@@ -245,13 +293,21 @@ def _analyze_ticker(ticker: str, settings: ScalpSettings) -> ScalpEntry | None:
     )
 
 
+def _analyze_ticker(ticker: str, settings: ScalpSettings) -> ScalpEntry | None:
+    history = _fetch_history(ticker)
+    if history is None:
+        return None
+    return _analyze_frame(ticker, history, settings)
+
+
 def screen_scalps(settings: ScalpSettings | None = None) -> list[ScalpEntry]:
     """Screen tickers for scalping entries with a fixed profit target."""
     settings = settings or ScalpSettings()
+    histories = _fetch_universe(settings.tickers)
     entries: list[ScalpEntry] = []
 
-    for ticker in settings.tickers:
-        result = _analyze_ticker(ticker, settings)
+    for ticker, history in histories.items():
+        result = _analyze_frame(ticker, history, settings)
         if result is not None:
             entries.append(result)
 

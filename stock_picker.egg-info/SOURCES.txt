@@ -1,0 +1,13 @@
+pyproject.toml
+stock_picker/__init__.py
+stock_picker/app.py
+stock_picker/cli.py
+stock_picker/config.py
+stock_picker/scalper.py
+stock_picker/screener.py
+stock_picker.egg-info/PKG-INFO
+stock_picker.egg-info/SOURCES.txt
+stock_picker.egg-info/dependency_links.txt
+stock_picker.egg-info/entry_points.txt
+stock_picker.egg-info/requires.txt
+stock_picker.egg-info/top_level.txt

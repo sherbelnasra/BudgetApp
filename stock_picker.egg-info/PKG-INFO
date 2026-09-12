@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: stock-picker
+Version: 1.0.0
+Summary: Stock scalping dashboard with 5% profit-target entries and 150-MA picks
+Requires-Python: >=3.10
+Requires-Dist: yfinance>=0.2.40
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: streamlit>=1.32.0

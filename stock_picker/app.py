@@ -148,13 +148,31 @@ scalp_settings = ScalpSettings(
 )
 
 with tab_scalp:
-    run = st.button("Scan scalp entries", type="primary", use_container_width=True)
+    col_refresh, col_status = st.columns([1, 3])
+    with col_refresh:
+        refresh = st.button("Refresh scan", type="primary", use_container_width=True)
 
-    if run:
+    settings_key = (
+        scalp_settings.top_n,
+        scalp_settings.target_pct,
+        scalp_settings.stop_pct,
+        scalp_settings.min_atr_pct,
+        scalp_settings.min_avg_volume,
+        scalp_settings.long_only,
+        scalp_settings.require_actionable,
+    )
+    needs_scan = (
+        refresh
+        or "scalp_entries" not in st.session_state
+        or st.session_state.get("scalp_settings_key") != settings_key
+    )
+
+    if needs_scan:
         with st.spinner("Screening for volatile 5% scalp setups..."):
             entries = screen_scalps(scalp_settings)
             st.session_state["scalp_entries"] = entries
             st.session_state["scalp_settings"] = scalp_settings
+            st.session_state["scalp_settings_key"] = settings_key
 
     if "scalp_entries" in st.session_state:
         entries = st.session_state["scalp_entries"]
@@ -257,9 +275,6 @@ with tab_scalp:
                 chart["Target"] = pick.target
                 chart["Stop"] = pick.stop
                 st.line_chart(chart.dropna(), use_container_width=True)
-    else:
-        st.info("Click **Scan scalp entries** to generate today's 5% profit setups.")
-        st.markdown(f"Universe: **{len(DEFAULT_TICKERS)}** liquid names")
 
 with tab_ma:
     st.caption("Legacy daily picker — stocks above a rising 150-day moving average.")
