@@ -1,4 +1,4 @@
-"""Configuration for the daily stock picker."""
+"""Configuration for the daily stock picker and scalping dashboard."""
 
 from dataclasses import dataclass, field
 
@@ -22,6 +22,14 @@ MIN_HISTORY_DAYS = MA_PERIOD + MA_SLOPE_LOOKBACK + 5
 DEFAULT_TOP_N = 10
 MAX_PCT_ABOVE_MA = 15.0  # Avoid stocks too extended above the MA
 
+# Scalping defaults — 5% profit target with a tighter stop for positive R:R.
+SCALP_TARGET_PCT = 5.0
+SCALP_STOP_PCT = 2.0
+SCALP_MIN_ATR_PCT = 2.5  # Need daily ATR room so 5% is plausible
+SCALP_ATR_PERIOD = 14
+SCALP_RSI_PERIOD = 14
+SCALP_DEFAULT_TOP_N = 15
+
 
 @dataclass
 class ScreenerSettings:
@@ -32,3 +40,17 @@ class ScreenerSettings:
     require_rising_ma: bool = True
     max_pct_above_ma: float = MAX_PCT_ABOVE_MA
     min_avg_volume: int = 500_000
+
+
+@dataclass
+class ScalpSettings:
+    tickers: list[str] = field(default_factory=lambda: DEFAULT_TICKERS.copy())
+    top_n: int = SCALP_DEFAULT_TOP_N
+    target_pct: float = SCALP_TARGET_PCT
+    stop_pct: float = SCALP_STOP_PCT
+    min_atr_pct: float = SCALP_MIN_ATR_PCT
+    atr_period: int = SCALP_ATR_PERIOD
+    rsi_period: int = SCALP_RSI_PERIOD
+    min_avg_volume: int = 1_000_000
+    long_only: bool = True
+    require_actionable: bool = True

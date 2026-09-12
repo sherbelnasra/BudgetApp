@@ -1,7 +1,7 @@
 [project]
 name = "stock-picker"
 version = "1.0.0"
-description = "Daily stock picker using the 150-day moving average"
+description = "Stock scalping dashboard with 5% profit-target entries and 150-MA picks"
 requires-python = ">=3.10"
 dependencies = [
     "yfinance>=0.2.40",
