@@ -2,6 +2,15 @@
 
 SwiftUI client that polls the CallAlert API and fires a **local notification** when a new monthly call in the **$0.15–$0.20** band is ranked as a buy alert.
 
+**Fastest way to try on your phone today:** use the web home-screen app (icon included):
+
+```bash
+./run_phone.sh
+# iPhone Safari → open the printed URL → Share → Add to Home Screen
+```
+
+See also `web/callalert/` — same icon as the native AppIcon asset.
+
 ## What you get
 
 - Feed of ranked `BUY_CALL` alerts

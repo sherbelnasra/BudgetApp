@@ -1,0 +1,185 @@
+:root {
+  --ink: #0f1a14;
+  --mint: #1fa97a;
+  --panel: rgba(15, 26, 20, 0.04);
+  --line: rgba(15, 26, 20, 0.12);
+  --warn: #c45c26;
+  --bg0: #d8f3e7;
+  --bg1: #f7faf8;
+  --bg2: #f3e6d8;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  font-family: "DM Sans", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 500px at 8% -10%, var(--bg0) 0%, transparent 55%),
+    radial-gradient(700px 420px at 100% 0%, var(--bg2) 0%, transparent 50%),
+    linear-gradient(180deg, var(--bg1) 0%, #eef3f0 100%);
+}
+
+body {
+  padding: 1rem 1rem 5.5rem;
+}
+
+header {
+  padding: 0.5rem 0 1rem;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-row img {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 7vw, 2.4rem);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.sub {
+  margin: 0.55rem 0 0;
+  max-width: 28rem;
+  color: rgba(15, 26, 20, 0.7);
+  font-size: 0.98rem;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+}
+
+.tag {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.install-banner {
+  display: none;
+  margin: 0.75rem 0 1rem;
+  padding: 0.9rem 1rem;
+  border-top: 2px solid var(--mint);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.install-banner.show { display: block; }
+
+.install-banner strong { display: block; margin-bottom: 0.35rem; }
+
+.install-banner ol {
+  margin: 0.4rem 0 0.75rem 1.1rem;
+  padding: 0;
+  color: rgba(15, 26, 20, 0.75);
+  font-size: 0.9rem;
+}
+
+.btn {
+  appearance: none;
+  border: 0;
+  background: var(--ink);
+  color: #f7faf8;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+}
+
+.btn.secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 1rem;
+}
+
+.alerts { display: grid; gap: 0.85rem; }
+
+.card {
+  padding: 0.95rem 0.2rem 0.85rem;
+  border-top: 2px solid var(--mint);
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.ticker {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.premium {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  color: var(--mint);
+  font-weight: 600;
+}
+
+.meta, .reason {
+  margin: 0.35rem 0 0;
+  color: rgba(15, 26, 20, 0.68);
+  font-size: 0.9rem;
+}
+
+.empty, .error {
+  padding: 1rem 0;
+  color: rgba(15, 26, 20, 0.7);
+}
+
+.error { color: var(--warn); }
+
+.disclaimer {
+  margin-top: 1.5rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.78rem;
+  color: rgba(15, 26, 20, 0.55);
+}
+
+.dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: rgba(247, 250, 248, 0.92);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.dock .btn { flex: 1; }
+
+@media (display-mode: standalone) {
+  .install-banner { display: none !important; }
+}

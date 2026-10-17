@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0F1A14" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CallAlert" />
+    <title>CallAlert</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand-row">
+        <img src="./icons/icon-192.png" alt="CallAlert icon" width="56" height="56" />
+        <h1>CallAlert</h1>
+      </div>
+      <p class="sub">
+        Monthly OTM calls priced $0.15–$0.20 when the stock clears a rising 150-day MA.
+      </p>
+      <div class="tags">
+        <span class="tag" id="modeTag">DEMO</span>
+        <span class="tag" id="status">Loading…</span>
+        <span class="tag">$0.15–$0.20</span>
+      </div>
+    </header>
+
+    <section class="install-banner" id="installBanner">
+      <strong>Add CallAlert to your Home Screen</strong>
+      <ol>
+        <li>Tap the Share button in Safari</li>
+        <li>Scroll and tap <em>Add to Home Screen</em></li>
+        <li>Tap Add — the CallAlert icon appears on your phone</li>
+      </ol>
+      <button class="btn" id="installBtn" type="button">Install app</button>
+    </section>
+
+    <div class="toolbar">
+      <button class="btn secondary" id="demoBtn" type="button">Demo</button>
+      <button class="btn secondary" id="liveBtn" type="button">Live scan</button>
+    </div>
+
+    <p class="error" id="error"></p>
+    <div class="alerts" id="alerts"></div>
+    <p class="disclaimer" id="disclaimer"></p>
+
+    <div class="dock">
+      <button class="btn" id="refreshBtn" type="button">Refresh alerts</button>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
