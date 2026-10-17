@@ -1,4 +1,4 @@
-"""Configuration for the daily stock picker and scalping dashboard."""
+"""Configuration for stock picker, scalping, and monthly call alerts."""
 
 from dataclasses import dataclass, field
 
@@ -54,3 +54,36 @@ class ScalpSettings:
     min_avg_volume: int = 1_000_000
     long_only: bool = True
     require_actionable: bool = True
+
+
+# Cheap monthly call alerts for the iOS notification client.
+OPTION_MIN_PREMIUM = 0.15
+OPTION_MAX_PREMIUM = 0.20
+OPTION_MIN_DTE = 15
+OPTION_MAX_DTE = 45
+OPTION_MIN_OPEN_INTEREST = 50
+OPTION_MIN_VOLUME = 0
+OPTION_MAX_SPREAD_PCT = 40.0
+OPTION_MAX_PCT_OTM = 35.0
+OPTION_MAX_IV = 1.5  # 150% IV cap to skip extreme lottery tickets
+OPTION_DEFAULT_TOP_N = 10
+OPTION_POLL_SECONDS = 300
+
+
+@dataclass
+class OptionsAlertSettings:
+    tickers: list[str] = field(default_factory=lambda: DEFAULT_TICKERS.copy())
+    top_n: int = OPTION_DEFAULT_TOP_N
+    min_premium: float = OPTION_MIN_PREMIUM
+    max_premium: float = OPTION_MAX_PREMIUM
+    min_dte: int = OPTION_MIN_DTE
+    max_dte: int = OPTION_MAX_DTE
+    min_open_interest: int = OPTION_MIN_OPEN_INTEREST
+    min_volume: int = OPTION_MIN_VOLUME
+    max_spread_pct: float = OPTION_MAX_SPREAD_PCT
+    max_pct_otm: float = OPTION_MAX_PCT_OTM
+    max_iv: float = OPTION_MAX_IV
+    max_pct_above_ma: float = MAX_PCT_ABOVE_MA
+    min_avg_volume: int = 500_000
+    require_bullish_underlying: bool = True
+    poll_seconds: int = OPTION_POLL_SECONDS

@@ -1,10 +1,11 @@
-"""Command-line interface for scalp entries and daily MA picks."""
+"""Command-line interface for scalp entries, MA picks, and call alerts."""
 
 import argparse
 import json
 import sys
 
-from stock_picker.config import ScalpSettings, ScreenerSettings
+from stock_picker.config import OptionsAlertSettings, ScalpSettings, ScreenerSettings
+from stock_picker.options_alerts import demo_call_alerts, run_call_alert_screen
 from stock_picker.scalper import run_scalp_screen
 from stock_picker.screener import run_daily_screen
 
@@ -45,6 +46,42 @@ def _print_scalps(result: dict, settings: ScalpSettings) -> int:
     return 0
 
 
+def _print_calls(result: dict, settings: OptionsAlertSettings) -> int:
+    print(f"\nMonthly Call Alerts (${settings.min_premium:.2f}–${settings.max_premium:.2f}) — {result['date']}")
+    print("=" * 96)
+    print(
+        "Criteria: bullish 150-MA underlying, next monthly expiry, "
+        f"OTM calls, OI≥{settings.min_open_interest}\n"
+    )
+    if result.get("disclaimer"):
+        print(f"Note: {result['disclaimer']}\n")
+
+    if not result["alerts"]:
+        print("No call contracts matched today's criteria.")
+        return 1
+
+    header = (
+        f"{'Ticker':<7} {'Strike':>8} {'Expiry':<12} {'Mid':>6} "
+        f"{'OI':>6} {'%OTM':>6} {'Score':>6}  Reason"
+    )
+    print(header)
+    print("-" * 96)
+    for a in result["alerts"]:
+        print(
+            f"{a['ticker']:<7} "
+            f"${a['strike']:>7.2f} "
+            f"{a['expiry']:<12} "
+            f"${a['mid_price']:>5.2f} "
+            f"{a['open_interest']:>6} "
+            f"{a['pct_otm']:>5.1f}% "
+            f"{a['score']:>6.2f}  "
+            f"{a['reason'][:40]}"
+        )
+
+    print(f"\n{result['alerts_count']} alert(s) from {result['universe_size']} stocks screened.")
+    return 0
+
+
 def _print_ma(result: dict, settings: ScreenerSettings) -> int:
     print(f"\nDaily Stock Picks — {result['date']}")
     print("=" * 60)
@@ -75,13 +112,13 @@ def _print_ma(result: dict, settings: ScreenerSettings) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Stock scalping entries (5% target) and 150-MA daily picks."
+        description="Scalp entries, 150-MA picks, and monthly call alerts."
     )
     parser.add_argument(
         "--mode",
-        choices=["scalp", "ma"],
+        choices=["scalp", "ma", "calls"],
         default="scalp",
-        help="Screen mode: scalp (default) or ma",
+        help="Screen mode: scalp (default), ma, or calls",
     )
     parser.add_argument(
         "--top-n", type=int, default=None, help="Number of results to return"
@@ -114,6 +151,23 @@ def main() -> int:
         action="store_true",
         help="MA mode: do not require rising 150 MA",
     )
+    parser.add_argument(
+        "--min-premium",
+        type=float,
+        default=0.15,
+        help="Calls mode: minimum option mid/last price",
+    )
+    parser.add_argument(
+        "--max-premium",
+        type=float,
+        default=0.20,
+        help="Calls mode: maximum option mid/last price",
+    )
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="Calls mode: return sample alerts without market data",
+    )
     args = parser.parse_args()
 
     if args.mode == "scalp":
@@ -130,6 +184,26 @@ def main() -> int:
             print(json.dumps(result, indent=2))
             return 0
         return _print_scalps(result, settings)
+
+    if args.mode == "calls":
+        if args.demo:
+            result = demo_call_alerts()
+            settings = OptionsAlertSettings(
+                top_n=args.top_n or 10,
+                min_premium=args.min_premium,
+                max_premium=args.max_premium,
+            )
+        else:
+            settings = OptionsAlertSettings(
+                top_n=args.top_n or 10,
+                min_premium=args.min_premium,
+                max_premium=args.max_premium,
+            )
+            result = run_call_alert_screen(settings)
+        if args.json:
+            print(json.dumps(result, indent=2))
+            return 0
+        return _print_calls(result, settings)
 
     settings = ScreenerSettings(
         top_n=args.top_n or 10,
